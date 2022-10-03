@@ -3,7 +3,6 @@
 import time
 import math
 
-# install those packages
 import pyautogui as gui
 
 import graphics
@@ -11,6 +10,19 @@ from graphics import *
 
 
 timeDelta = 1.
+
+
+def rot_left(x, y):
+    return -y, x
+
+
+def rot_right(x, y):
+    return y, -x
+
+
+def dot_prod(a, b):
+    # or at least i believe this is dot product, not sure lol
+    return a[0] * b[0] + a[1] * b[1]
 
 
 class Enemy:
@@ -37,7 +49,6 @@ class Enemy:
 
         return x_abs / r + self.x, y_abs / r + self.y
 
-
     def update(self):
         print("e update")
 
@@ -46,10 +57,10 @@ class Enemy:
 
 class Player:
     x = y = 0  # will be derived from rotation (and the other way around in case of dodge move)
-    rotationSpeed = 3 * math.radians(1)  # in degrees
+    rotationSpeed = 3. * math.radians(1)  # in radians
 
     # rotO - relative rotation, rest - global rotation (possibly irrelevant) (rotO = rotZ)
-    rotO = rotX = rotY = rotZ = 0
+    rotO = rotX = rotY = rotZ = 0.
     moveDelta = 0
     charge = 100
     health = 3
@@ -58,16 +69,24 @@ class Player:
     coolDown = 0.  # counting down from whatever it's set to
     shootNextTime = 0
 
-    # current coords -> new rotation info
+    # current coords -> new rotation info | current coords have to be unit vector
     def update_rotation(self, e: Enemy):
+        # alpha = acos ( a.b / |a||b| )
+        # rotO = acos ( [0,1] . [self] / 1)
+        self.rotO = math.acos(dot_prod([0, 1], [self.x, self.y]))
+
         print("p rotation")
 
     # current rotation -> new coords info
     def update_position(self, e: Enemy):
-        print("p position")
+        self.x = math.cos(self.rotO)
+        self.y = math.sin(self.rotO)
 
     # direction is really either negative or positive
-    def move(self, e: Enemy, direction: int):
+    def move(self, e: Enemy, direction: str):
+        # rotate the vector to enemy by 90deg, multiply that by move multiplier
+        # then apply closest_point(), deviation should be marginal
+
         print("p move")
 
     def shoot(self, e: Enemy):
@@ -100,14 +119,22 @@ class Camera:
     swingIter = 0  # weapon's swing sinusoid's iterator
 
     weaponModel = "w_rifle.png"
+    squareDim = 20
+
 
     def update(self, p: Player):
+        # for now apply all the player's values to camera values
         print("c update")
 
-    def apply_camera_matrix(self, win: GraphWin):
+    # obj := standard point notation used here: [x, y]
+    # copy this from the js project
+    def apply_camera_matrix(self, obj: list, win: GraphWin):
+        # after whole drawing space has been completed, apply wikipedia's version of this for perspective
         print("c cam matrix")
 
-    def apply_rotation_matrix(self, obj: tuple, rad: float):
+    # obj := standard point notation used here: [x, y]
+    def apply_rotation_matrix(self, obj: list):
+
         print("c rot matrix")
 
     def draw_overlay(self, p: Player, win: GraphWin):
@@ -146,8 +173,6 @@ class Camera:
         # squares beyond the horizon or beyond any of the visible edges will not be drawn
         # fov will be fixed at 90deg, and the board will always be skewed to the left
 
-        square_dim = 20
-
         x_increment = [1, 0]
         y_increment = [0, 1]
 
@@ -159,11 +184,11 @@ class Camera:
 
         y_base = [0, 0]  # cached y position for ease of resetting position and moving on to a new row
 
-        while y_iter < square_dim:
+        while y_iter < self.squareDim:
 
             x_base = y_base  # main iterated position
 
-            while x_iter < square_dim:
+            while x_iter < self.squareDim:
 
                 color_iter += 1
                 x_base += x_increment
@@ -181,7 +206,25 @@ class Camera:
             x_iter = 0
             y_iter += 1
 
+    # hacky version of the tile drawing, deadline's shorter than i though
+    def draw_floor_wire(self, win: GraphWin):
+        # draw floor wire by wire
+
+        for rawX in range(self.squareDim):
+            # this is done to draw in the middle of the field
+            y_max = draw_radius = self.squareDim / 2
+            y_min = -y_max
+
+            x = rawX - draw_radius
+
+            # these values can be swapped to achieve horizontal lines
+            line = [[x, y_min], [x, y_max]]
+
+
+            print(x)
+
     def draw_enemy(self, e: Enemy):
+        # two methods, sprite or wireframe (pre-generated)
         print("c draw")
 
 
