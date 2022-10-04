@@ -155,9 +155,10 @@ class Camera:
         base_pos_x = win.getWidth() / 2
         base_pos_y = win.getHeight() - 100
 
-        img = Image(Point(base_pos_x + swing_x_offset * movement_multiplier,
-                          base_pos_y + swing_y_offset * movement_multiplier),
-                          "w_rifle.png")
+        final_pos_x = base_pos_x + swing_x_offset * movement_multiplier
+        final_pos_y = base_pos_y + swing_y_offset * movement_multiplier
+
+        img = Image(Point(final_pos_x, final_pos_y), "w_rifle.png")
 
         img.draw(win)
 
@@ -210,18 +211,65 @@ class Camera:
     def draw_floor_wire(self, win: GraphWin):
         # draw floor wire by wire
 
-        for rawX in range(self.squareDim):
-            # this is done to draw in the middle of the field
-            y_max = draw_radius = self.squareDim / 2
-            y_min = -y_max
+        floor_y = -1
 
-            x = rawX - draw_radius
+        # rotation of floor is just reverse rotation of the camera
+        rad_a = -self.rotX
+        rad_b = -self.rotY
+        rad_c = -self.rotZ
 
-            # these values can be swapped to achieve horizontal lines
-            line = [[x, y_min], [x, y_max]]
+        # 3/3 array
+        r = [[0.] * 3] * 3
 
+        # directly copied from my other project: https://github.com/LatekVo/js-render
 
-            print(x)
+        # precalculating 3x3 matrix fragments
+
+        r[0][0] = math.cos(rad_a) * math.cos(rad_b)
+        r[0][1] = (math.cos(rad_a) * math.sin(rad_b) * math.sin(rad_c)) - (math.sin(rad_a) * math.cos(rad_c))
+        r[0][2] = (math.cos(rad_a) * math.sin(rad_b) * math.cos(rad_c)) + (math.sin(rad_a) * math.sin(rad_c))
+
+        r[1][0] = math.sin(rad_a) * math.cos(rad_b)
+        r[1][1] = (math.sin(rad_a) * math.sin(rad_b) * math.sin(rad_c)) + (math.cos(rad_a) * math.cos(rad_c))
+        r[1][2] = (math.sin(rad_a) * math.sin(rad_b) * math.cos(rad_c)) - (math.cos(rad_a) * math.sin(rad_c))
+
+        r[2][0] = (-math.sin(rad_b))
+        r[2][1] = math.cos(rad_b) * math.sin(rad_c)
+        r[2][2] = math.cos(rad_b) * math.cos(rad_c)
+
+        size_multiplier = 100
+
+        for mode in range(2):
+            for rawX in range(self.squareDim):
+                # this is done to draw in the middle of the field
+                y_max = draw_radius = self.squareDim / 2
+                y_min = -y_max
+
+                x = rawX - draw_radius
+
+                # these values can be swapped to achieve horizontal lines
+                line = [[x, y_min, floor_y], [x, y_max, floor_y]]
+
+                # to create the grid, invert those lines
+                if mode == 1:
+                    line = [[y_min, x, floor_y], [y_max, x, floor_y]]
+
+                for p in line:
+                    for n in p:
+                        n *= size_multiplier
+
+                    # apply precalculated matrix to every point
+                    p[0] = (p[0] * r[0][0]) + (p[1] * r[0][1]) + (p[2] * r[0][2])
+                    p[1] = (p[0] * r[1][0]) + (p[1] * r[1][1]) + (p[2] * r[1][2])
+                    p[2] = (p[0] * r[2][0]) + (p[1] * r[2][1]) + (p[2] * r[2][2])
+
+                    # to add perspective to EACH POINT, multiply by focal_number / point_z
+                    focal_number = 20
+                    p[0] *= focal_number / p[2]
+                    p[1] *= focal_number / p[2]
+
+                line_obj = Line(Point(line[0][0], line[0][1]), Point(line[1][0], line[1][1]))
+                line_obj.draw(win)
 
     def draw_enemy(self, e: Enemy):
         # two methods, sprite or wireframe (pre-generated)
@@ -254,7 +302,7 @@ if __name__ == '__main__':
         for item in window.items[:]:
             item.undraw()
 
-        camera.draw_floor_tiles()
+        camera.draw_floor_wire(window)
         camera.draw_enemy(enemy)
         camera.draw_overlay(player, window)
 
